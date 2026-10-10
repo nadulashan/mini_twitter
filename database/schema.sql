@@ -11,7 +11,7 @@ CREATE TABLE posts (
     content TEXT NOT NULL,
     user_id INTEGER NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT fk_posts_author
+    CONSTRAINT posts_user_id_fkey
         FOREIGN KEY (user_id)
         REFERENCES users (id)
 );
