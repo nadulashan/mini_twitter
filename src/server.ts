@@ -9,11 +9,20 @@ const PORT = 3000;
 // Middleware: parse incoming JSON request bodies
 app.use(express.json());
 
+app.get("/api/users", async ( req, res ) => {
+  
+  const result = await pool.query(
+    "SELECT * FROM users;"
+  )
+  res.status(200).json(result.rows)
+
+})
+
 // Our first API endpoint
 app.get("/api/test-db", async (req, res) => {
    
   const result = await pool.query(`
-    SELECT 
+    SELECT
       posts.id,
       posts.content,
       posts.created_at,
@@ -33,7 +42,7 @@ app.post("/api/posts", async ( req, res ) => {
   try {
     
     const { user_id, content } = req.body;
-
+    console.log(user_id, content)
     if ( !user_id || !content ){
       return res.status(400).json({
         message: 'Both content and author must be present.'
@@ -46,7 +55,7 @@ app.post("/api/posts", async ( req, res ) => {
         RETURNING *;
       `, [ content, user_id ])
     
-      res.status(200).json((result).rows[0])
+      res.status(200).json(result.rows[0])
 
   } catch ( e ) {
 
