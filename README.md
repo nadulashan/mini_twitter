@@ -52,14 +52,7 @@ npm install
 
 Create a `.env` file in the project root.
 
-```env
-PORT=3000
-DATABASE_URL=your_postgresql_connection_string
-```
-
-Replace the example database value with your local PostgreSQL connection details.
-
-Never commit your `.env` file or expose database credentials.
+Look at .env.example file to create a matching environment variables.
 
 ### 4. Set up the database
 
@@ -82,9 +75,9 @@ The server should start on the configured port.
 | Method | Endpoint | Description |
 |---|---|---|
 | POST | `/api/posts` | Create a post |
-| POST | `/api/register` | Register a user |
+| POST | `/api/auth/register` | Register a user |
 
-> These endpoints are an initial list. Update this table whenever routes are added or changed.
+
 
 ## Project Structure
 
@@ -98,7 +91,6 @@ mini-twitter/
 └── README.md
 ```
 
-The structure above is illustrative. Update it to match the actual project.
 
 ## Development Status
 
