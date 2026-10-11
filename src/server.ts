@@ -137,38 +137,31 @@ app.post( "/api/auth/login", async ( req, res ) => {
       typeof email !== 'string' ||
       typeof password !== 'string' ||
       !email.trim() ||
-      !password.trim() ||
-      password.length < 8
+      !password.trim()
     ) {
       return res.status(400).json({
         message: "Email or Password cannot be blank. Password must at least contain 8 characters."
       })
     }
 
+    const cleanEmail = email.trim().toLowerCase();
     
     // Fetch Hash password
     const result = await pool.query(`
-        SELECT password_hash
+        SELECT password_hash, id
         FROM users
         WHERE email=$1;
-      `, [ email ]);
+      `, [ cleanEmail ]);
 
 
-    // If no user was found
-    if ( result.rowCount === 0 ){
-      return res.status(404).json({
-        message: "User not found"
-      })
-    }
-
-    const hash_password = result.rows[0].password_hash
+    const hashPassword = result.rows[0].password_hash
 
     // Validate user
-    const doesMatch = await argon2.verify(hash_password, password)
+    const doesMatch = await argon2.verify(hashPassword, password)
     
     if ( !doesMatch ) {
       return res.status(401).json({
-        message: "Password does not match"
+        message: "Invalied username or password"
       })
     }
 
