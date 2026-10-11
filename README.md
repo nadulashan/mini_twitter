@@ -23,7 +23,7 @@ This project is a learning project focused on building a backend application usi
 - **Language:** TypeScript
 - **Database:** PostgreSQL
 - **Database Client:** node-postgres (`pg`)
-- **Password Hashing:** [Add the library we use]
+- **Password Hashing:** argon2
 
 ## Prerequisites
 
