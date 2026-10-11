@@ -140,7 +140,7 @@ app.post( "/api/auth/login", async ( req, res ) => {
       !password.trim()
     ) {
       return res.status(400).json({
-        message: "Email or Password cannot be blank. Password must at least contain 8 characters."
+        message: "Email or Password cannot be blank."
       })
     }
 
@@ -153,6 +153,12 @@ app.post( "/api/auth/login", async ( req, res ) => {
         WHERE email=$1;
       `, [ cleanEmail ]);
 
+    // Return if user not found
+    if ( result.rowCount === 0 ) {
+      return res.status(401).json({
+        message: "Invalied username or password"
+      })
+    }
 
     const hashPassword = result.rows[0].password_hash
 
