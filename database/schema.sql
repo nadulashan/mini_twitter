@@ -15,3 +15,5 @@ CREATE TABLE posts (
         FOREIGN KEY (user_id)
         REFERENCES users (id)
 );
+
+ALTER TABLE users ADD CONSTRAINT unique_email UNIQUE (email);
