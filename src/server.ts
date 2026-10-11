@@ -125,6 +125,69 @@ app.post( "/api/auth/register", async ( req, res ) => {
 
 })
 
+// User log in 
+app.post( "/api/auth/login", async ( req, res ) => {
+
+  try {
+
+    const { email, password } = req.body;
+
+    // Validate uesr input data
+    if (
+      typeof email !== 'string' ||
+      typeof password !== 'string' ||
+      !email.trim() ||
+      !password.trim() ||
+      password.length < 8
+    ) {
+      return res.status(400).json({
+        message: "Email or Password cannot be blank. Password must at least contain 8 characters."
+      })
+    }
+
+    
+    // Fetch Hash password
+    const result = await pool.query(`
+        SELECT password_hash
+        FROM users
+        WHERE email=$1;
+      `, [ email ]);
+
+
+    // If no user was found
+    if ( result.rowCount === 0 ){
+      return res.status(404).json({
+        message: "User not found"
+      })
+    }
+
+    const hash_password = result.rows[0].password_hash
+
+    // Validate user
+    const doesMatch = await argon2.verify(hash_password, password)
+    
+    if ( !doesMatch ) {
+      return res.status(401).json({
+        message: "Password does not match"
+      })
+    }
+
+    // Authentication token or something
+    res.status(200).json({
+      message: "Authenitcation successful"
+    })
+
+  } catch (e) {
+
+    console.error(e)
+    res.status(500).json({
+      message:"Server Error"
+    })
+
+  }
+
+})
+
 
 // Start the server
 app.listen(PORT, () => {
