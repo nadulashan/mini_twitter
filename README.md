@@ -11,7 +11,7 @@ This project is a learning project focused on building a backend application usi
 - [x] Connect to PostgreSQL
 - [x] User registration
 - [x] Password hashing
-- [ ] User login
+- [x] User login
 - [ ] Authentication and authorization
 - [ ] Retrieve posts with author information
 - [ ] Update and delete posts
@@ -24,6 +24,8 @@ This project is a learning project focused on building a backend application usi
 - **Database:** PostgreSQL
 - **Database Client:** node-postgres (`pg`)
 - **Password Hashing:** argon2
+- **Session Managing: **express-session
+- **Session Storing: **connect-pg-simple
 
 ## Prerequisites
 

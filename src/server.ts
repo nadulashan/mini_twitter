@@ -2,6 +2,8 @@ import "dotenv/config";
 import pool from "./db.js";
 import express from "express";
 import argon2 from "argon2";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 
 const app = express();
 
@@ -9,6 +11,25 @@ const PORT = 3000;
 
 // Middleware: parse incoming JSON request bodies
 app.use(express.json());
+const PgSession = connectPgSimple(session);
+
+app.use(
+  session({
+    store: new PgSession({
+      pool,
+      createTableIfMissing: true,
+    }),
+    secret: process.env.SESSION_SECRET!,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    },
+  })
+);
 
 // Get all the users
 app.get("/api/users", async ( req, res ) => {
@@ -172,9 +193,20 @@ app.post( "/api/auth/login", async ( req, res ) => {
     }
 
     // Authentication token or something
-    res.status(200).json({
-      message: "Authenitcation successful"
-    })
+    req.session.userId = result.rows[0].id;
+
+    req.session.save((err) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({
+          message: "Failed to create session."
+        });
+      }
+
+      return res.status(200).json({
+        message: "Authentication successful."
+      });
+    });
 
   } catch (e) {
 
