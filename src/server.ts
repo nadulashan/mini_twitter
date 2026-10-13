@@ -14,14 +14,20 @@ app.use(express.json());
 const PgSession = connectPgSimple(session);
 
 app.use(
+
+  //
   session({
     store: new PgSession({
       pool,
       createTableIfMissing: true,
     }),
+
+    //
     secret: process.env.SESSION_SECRET!,
     resave: false,
     saveUninitialized: false,
+
+    //
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
