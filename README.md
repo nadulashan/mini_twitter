@@ -24,8 +24,8 @@ This project is a learning project focused on building a backend application usi
 - **Database:** PostgreSQL
 - **Database Client:** node-postgres (`pg`)
 - **Password Hashing:** argon2
-- **Session Managing: **express-session
-- **Session Storing: **connect-pg-simple
+- **Session Managing:** express-session
+- **Session Storing:** connect-pg-simple
 
 ## Prerequisites
 
