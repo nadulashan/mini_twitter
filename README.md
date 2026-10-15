@@ -12,7 +12,7 @@ This project is a learning project focused on building a backend application usi
 - [x] User registration
 - [x] Password hashing
 - [x] User login
-- [ ] Authentication and authorization
+- [x] Authentication and authorization
 - [ ] Retrieve posts with author information
 - [ ] Update and delete posts
 

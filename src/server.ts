@@ -269,6 +269,30 @@ app.get("/api/auth/me", checkAuth, async ( req, res ) => {
 
 })
 
+app.post("/api/auth/logout", (req, res) => {
+
+  req.session.destroy( err => {
+    if ( err ) {
+      console.error(err)
+
+      return res.status(500).json({
+        message: "Failed to Log out"
+      })
+    }
+
+    res.clearCookie("connect.sid", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax"
+    })
+
+    return res.status(200).json({
+      message: "Successfully logged out"
+    })
+  })
+
+})
+
 
 // Start the server
 app.listen(PORT, () => {
