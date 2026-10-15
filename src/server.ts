@@ -1,6 +1,6 @@
 import "dotenv/config";
 import pool from "./db.js";
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import argon2 from "argon2";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
@@ -37,6 +37,22 @@ app.use(
   })
 );
 
+// Check isAuthenticated
+function checkAuth ( 
+  req: Request, 
+  res: Response, 
+  next: NextFunction 
+){
+  if ( !req.session.userId ) {
+    return res.status(401).json({
+      message: "User not logged in"
+    })
+  }
+
+  next()
+}
+
+
 // Get all the users
 app.get("/api/users", async ( req, res ) => {
   
@@ -68,25 +84,27 @@ app.get("/api/test-db", async (req, res) => {
 
 
 // Insert new post
-app.post("/api/posts", async ( req, res ) => {
+app.post("/api/posts", checkAuth, async ( req, res ) => {
 
   try {
     
-    const { user_id, content } = req.body;
-    console.log(user_id, content)
-    if ( !user_id || !content ){
+    const { content } = req.body;
+    const userId = req.session.userId
+
+    console.log(userId, content)
+    if ( typeof content !== "string" || !content.trim() ){
       return res.status(400).json({
-        message: 'Both content and author must be present.'
+        message: "Content is invalied."
       })
     }
 
     const result = await pool.query(`
         INSERT INTO posts ( content, user_id ) 
         VALUES ( $1, $2 )
-        RETURNING *;
-      `, [ content, user_id ])
+        RETURNING content, user_id, created_at;
+      `, [ content, userId ])
     
-      res.status(200).json(result.rows[0])
+      res.status(201).json(result.rows[0])
 
   } catch ( e ) {
 
@@ -221,6 +239,32 @@ app.post( "/api/auth/login", async ( req, res ) => {
       message:"Server Error"
     })
 
+  }
+
+})
+
+
+app.get("/api/auth/me", checkAuth, async ( req, res ) => {
+
+  try {
+
+    const result = await pool.query(`
+        SELECT username, email, created_at
+        FROM users
+        WHERE id=$1
+      `, [ req.session.userId ])
+
+    if ( !result.rows[0] ){
+      return res.status(400).json({
+        message: "Cannot find user account. It may have been deleted."
+      })
+    }
+
+    return res.status(200).json(result.rows[0])
+
+  } catch (e) {
+    console.error(e)
+    return res.status(500).json("Server error")
   }
 
 })
