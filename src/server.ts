@@ -84,7 +84,7 @@ app.get("/api/test-db", async (req, res) => {
 
 
 // Insert new post
-app.post("/api/posts", checkAuth, async ( req, res ) => {
+app.post("/api/create-posts", checkAuth, async ( req, res ) => {
 
   try {
     
@@ -290,6 +290,33 @@ app.post("/api/auth/logout", (req, res) => {
       message: "Successfully logged out"
     })
   })
+
+})
+
+app.get("/api/posts", async ( req, res ) => {
+
+  try {
+
+    const results = await pool.query(`
+        SELECT 
+          posts.id,
+          posts.content,
+          posts.created_at,
+          users.username AS author
+        FROM posts
+        JOIN users ON posts.user_id = users.id
+        ORDER BY posts.created_at DESC;
+      `)
+    res.status(200).json(results.rows)
+
+  } catch (e) {
+
+    console.error(e)
+    return res.status(500).json({
+      message: "Server could not fetch posts"
+    })
+
+  }
 
 })
 
