@@ -320,6 +320,37 @@ app.get("/api/posts", async ( req, res ) => {
 
 })
 
+app.get("/api/posts/:id", async ( req, res ) => {
+  try {
+    const postId = Number(req.params.id)
+    console.log(postId)
+
+    const result = await pool.query(`
+        SELECT 
+          posts.id,
+          posts.content,
+          posts.created_at,
+          users.username AS author
+        FROM posts
+        JOIN users ON posts.user_id = users.id
+        WHERE posts.id = $1
+      `, [ postId ])
+
+      if ( result.rowCount == 0 ) {
+        return res.status(204).json({
+          message: "Post unavailable"
+        })
+      }
+
+      return res.status(200).json(result.rows[0])
+  } catch ( e ) {
+    console.error(e)
+    return res.status(500).json({
+      message: "Cound not fetch post with the passed ID"
+    })
+  }
+})
+
 
 // Start the server
 app.listen(PORT, () => {
