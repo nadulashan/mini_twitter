@@ -323,17 +323,16 @@ app.get("/api/posts", async ( req, res ) => {
 app.get("/api/posts/:id", async ( req, res ) => {
   try {
     const postId = Number(req.params.id)
-    console.log(postId)
 
     const result = await pool.query(`
-        SELECT 
+        SELECT  
           posts.id,
           posts.content,
           posts.created_at,
           users.username AS author
         FROM posts
         JOIN users ON posts.user_id = users.id
-        WHERE posts.id = $1
+        WHERE posts.id = $1;
       `, [ postId ])
 
       if ( result.rowCount == 0 ) {
@@ -347,6 +346,46 @@ app.get("/api/posts/:id", async ( req, res ) => {
     console.error(e)
     return res.status(500).json({
       message: "Cound not fetch post with the passed ID"
+    })
+  }
+})
+
+app.delete("/api/posts/:id", checkAuth, async ( req, res ) => {
+  try {
+    const postId = req.params.id
+    const authUserId = req.session.userId;
+
+    const userIdOfPost = await pool.query(`
+        SELECT user_Id
+        FROM posts
+        WHERE id = $1;
+      `, [ postId ])
+      
+    if ( userIdOfPost.rowCount == 0 ) {
+      return res.status(400).json({
+        message: "Could not find the post"
+      })
+    }
+
+    if ( Number( userIdOfPost.rows[0].user_id ) !== Number( authUserId )) {
+      return res.status(401).json({
+        message: "Logged in user is not authorised to perform this action."
+      })
+    }
+
+    const result = await pool.query(`
+        DELETE 
+        FROM posts
+        WHERE id = $1
+        RETURNING *;
+      `, [ postId ])
+
+    return res.status(200).json(result.rows[0])
+
+  } catch (e) {
+    console.error(e)
+    return res.status(500).json({
+      message: "Could not delete the post."
     })
   }
 })
