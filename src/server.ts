@@ -324,6 +324,12 @@ app.get("/api/posts/:id", async ( req, res ) => {
   try {
     const postId = Number(req.params.id)
 
+    if ( !Number.isInteger(postId) || postId <= 0 ) {
+      return res.status(400).json({
+        message: "Invalied Post ID."
+      })
+    }
+
     const result = await pool.query(`
         SELECT  
           posts.id,
@@ -352,35 +358,32 @@ app.get("/api/posts/:id", async ( req, res ) => {
 
 app.delete("/api/posts/:id", checkAuth, async ( req, res ) => {
   try {
-    const postId = req.params.id
-    const authUserId = req.session.userId;
+    
+    const postId = Number( req.params.id );
+    const userId = req.session.userId;
 
-    const userIdOfPost = await pool.query(`
-        SELECT user_Id
-        FROM posts
-        WHERE id = $1;
-      `, [ postId ])
-      
-    if ( userIdOfPost.rowCount == 0 ) {
+    if ( !Number.isInteger( postId ) || postId <=0 ) {
       return res.status(400).json({
-        message: "Could not find the post"
-      })
-    }
-
-    if ( Number( userIdOfPost.rows[0].user_id ) !== Number( authUserId )) {
-      return res.status(401).json({
-        message: "Logged in user is not authorised to perform this action."
+        message: "Invalied Post ID."
       })
     }
 
     const result = await pool.query(`
-        DELETE 
+        DELETE
         FROM posts
-        WHERE id = $1
-        RETURNING *;
-      `, [ postId ])
+        WHERE id = $1 AND user_id = $2;
+      `, [ postId, userId ])
 
-    return res.status(200).json(result.rows[0])
+    if ( result.rowCount == 0 ) {
+      return res.status(404).json({
+        message: "Post Not Found."
+      })
+    }
+
+    return res.status(200).json({
+      message: "Post deleted successfully.",
+      data: result.rows[0]
+    })
 
   } catch (e) {
     console.error(e)
