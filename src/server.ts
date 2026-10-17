@@ -4,7 +4,7 @@ import express, { Request, Response, NextFunction } from "express";
 import argon2 from "argon2";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
-import { rateLimit } from "express-rate-limit"
+import { rateLimit, ipKeyGenerator } from "express-rate-limit"
 
 const app = express();
 
@@ -39,7 +39,7 @@ app.use(
   })
 );
 
-// Login Rate limiter
+// Login Rate Limiter
 const loginIpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
@@ -47,6 +47,32 @@ const loginIpLimiter = rateLimit({
   legacyHeaders: false,
   message: {
     message: "Too many login attempts. Please try again later."
+  }
+});
+
+// Login Email Limiter
+const loginAccountLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+
+  keyGenerator: (req) => {
+    const email = req.body?.email;
+
+    if (typeof email === "string" && email.trim()) {
+      return `email:${email.trim().toLowerCase()}`;
+    }
+
+    return `ip:${ipKeyGenerator(req.ip!)}`;
+  },
+
+  skipSuccessfulRequests: true,
+
+  standardHeaders: false,
+  legacyHeaders: false,
+
+  message: {
+    message:
+      "Too many failed login attempts for this account. Please try again later."
   }
 });
 
@@ -184,7 +210,10 @@ app.post( "/api/auth/register", async ( req, res ) => {
 })
 
 // User log in 
-app.post( "/api/auth/login", loginIpLimiter, async ( req, res ) => {
+app.post( "/api/auth/login", 
+          loginIpLimiter,
+          loginAccountLimiter,
+          async ( req, res ) => {
 
   try {
 
