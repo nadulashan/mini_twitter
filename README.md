@@ -13,6 +13,7 @@ This project is a learning project focused on building a backend application usi
 - [x] Password hashing
 - [x] User login
 - [x] Authentication and authorization
+- [x] IP rate limit
 - [ ] Retrieve posts with author information
 - [ ] Update and delete posts
 
@@ -26,6 +27,7 @@ This project is a learning project focused on building a backend application usi
 - **Password Hashing:** argon2
 - **Session Managing:** express-session
 - **Session Storing:** connect-pg-simple
+- **Rate Limit:** express-rate-limit
 
 ## Prerequisites
 

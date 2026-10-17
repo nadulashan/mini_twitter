@@ -4,6 +4,7 @@ import express, { Request, Response, NextFunction } from "express";
 import argon2 from "argon2";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
+import { rateLimit } from "express-rate-limit"
 
 const app = express();
 
@@ -13,6 +14,7 @@ const PORT = 3000;
 app.use(express.json());
 const PgSession = connectPgSimple(session);
 
+// Create sessions and maintain them
 app.use(
 
   //
@@ -36,6 +38,17 @@ app.use(
     },
   })
 );
+
+// Login Rate limiter
+const loginIpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    message: "Too many login attempts. Please try again later."
+  }
+});
 
 // Check isAuthenticated
 function checkAuth ( 
@@ -171,7 +184,7 @@ app.post( "/api/auth/register", async ( req, res ) => {
 })
 
 // User log in 
-app.post( "/api/auth/login", async ( req, res ) => {
+app.post( "/api/auth/login", loginIpLimiter, async ( req, res ) => {
 
   try {
 
