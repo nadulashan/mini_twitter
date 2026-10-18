@@ -17,6 +17,8 @@ const ipLoginFailure = new Map< string, IpLoginFailureType >();
 const FAILURE_WINDOW_MS = 1000*60*15
 const MAX_LOGIN_DELAY_MS = 1000*8
 
+const DUMMY_PASSWORD_HASH = "$argon2id$v=19$m=65536,p=4,t=3$Rlj6EmwwM/QFMrR/EANfDg$54LNiyeNrwhgEHsxxrZ+QSjBYYTnJb3pbWkr26gYvgg"
+
 
 function recordIpFailure( ip: string, email: string ): number{
   cleanupLoginFailures()
@@ -243,7 +245,7 @@ app.post( "/api/auth/register", async ( req, res ) => {
     const result = await pool.query(`
         INSERT INTO users (username, email, password_hash)
         VALUES ( $1, $2, $3 )
-        RETURNING ( id, username, email, created_at);
+        RETURNING id, username, email, created_at;
       `, [ cleanUsername, cleanEmail, password_hash ])
       
     res.status(201).json(result.rows[0])
@@ -294,16 +296,16 @@ app.post( "/api/auth/login",
         WHERE email=$1;
       `, [ normalisedEmail ]);
 
-    let userId: number | undefined;
-    let authenticated = false
-      
-    if ( result.rowCount && result.rowCount > 0 ) {
-      authenticated = await argon2.verify(result.rows[0].password_hash, password)
-    }
+    
+    const user = result.rows[0]
 
-    if ( authenticated ) {
-      userId = result.rows[0].id
-    }
+    const hashToVerify = user? user.password : DUMMY_PASSWORD_HASH
+      
+    const isPasswordCorrect = await argon2.verify(hashToVerify, password)
+
+    const authenticated = Boolean( isPasswordCorrect && user )
+
+    const userId: number | undefined = authenticated? result.rows[0].id : undefined
 
     if ( !authenticated ) {
 
@@ -313,7 +315,7 @@ app.post( "/api/auth/login",
         await wait( delayMs )
       }
 
-      return res.status(400).json({
+      return res.status(401).json({
         message: "Invalied Email or Password"
       })
     }
