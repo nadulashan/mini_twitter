@@ -6,43 +6,22 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { rateLimit, ipKeyGenerator } from "express-rate-limit"
 
-type LoginFailureType = {
-  count: number,
-  lastFailureAt: number
-}
-
-const loginFailure = new Map< string, LoginFailureType >();
-
 type IpLoginFailureType = {
   count: number,
   lastFailureAt: number
 }
+
 
 const ipLoginFailure = new Map< string, IpLoginFailureType >();
 
 const FAILURE_WINDOW_MS = 1000*60*15
 const MAX_LOGIN_DELAY_MS = 1000*8
 
-function recordAccountFailure( email: string ): number{
-  const now = Date.now();
-  const previous = loginFailure.get(email)
 
-  const count = !previous || ( now - previous.count ) > FAILURE_WINDOW_MS ? 
-                1 
-                : previous.count + 1
-  
-  loginFailure.set( email, {
-    count,
-    lastFailureAt: now
-  })
+function recordIpFailure( ip: string, email: string ): number{
+  cleanupLoginFailures()
 
-  return count;
-
-}
-
-function recordIpFailure( ip: string ): number{
-
-  const key = ipKeyGenerator(ip)
+  const key = JSON.stringify([ ipKeyGenerator(ip), email ])
   const now = Date.now()
   const previous = ipLoginFailure.get(key)
 
@@ -63,12 +42,20 @@ function recordIpFailure( ip: string ): number{
 
 }
 
-function resetAccountFailure( email: string ): void{
-  loginFailure.delete(email)
+// Clean Up functions
+function resetIpLoginFailure( ip: string, email: string ): void{
+  const key = JSON.stringify([ipKeyGenerator(ip), email])
+  ipLoginFailure.delete( key )
 }
 
-function resetIpLoginFailure( ip: string ): void{
-  ipLoginFailure.delete( ipKeyGenerator(ip) )
+function cleanupLoginFailures(): void {
+  const now = Date.now()
+
+  for ( const [ key, failure ] of ipLoginFailure ) {
+    if ( now - failure.lastFailureAt > FAILURE_WINDOW_MS ) {
+      ipLoginFailure.delete(key)
+    }
+  }
 }
 
 function wait( ms: number): Promise< void >{
@@ -284,7 +271,6 @@ app.post( "/api/auth/login",
           async ( req, res ) => {
 
   try {
-
     const { email, password } = req.body;
 
     // Validate uesr input data
@@ -320,9 +306,8 @@ app.post( "/api/auth/login",
     }
 
     if ( !authenticated ) {
-      recordAccountFailure( normalisedEmail )
 
-      const delayMs = recordIpFailure( req.ip! )
+      const delayMs = recordIpFailure( req.ip!, normalisedEmail )
 
       if ( delayMs > 0 ){
         await wait( delayMs )
@@ -334,8 +319,7 @@ app.post( "/api/auth/login",
     }
 
     // Reset failiure counters
-    resetAccountFailure( normalisedEmail )
-    resetIpLoginFailure( req.ip! )
+    resetIpLoginFailure( req.ip!, normalisedEmail )
 
     // Create session
     req.session.userId = userId;
