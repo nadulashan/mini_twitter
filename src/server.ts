@@ -6,6 +6,75 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { rateLimit, ipKeyGenerator } from "express-rate-limit"
 
+type LoginFailureType = {
+  count: number,
+  lastFailureAt: number
+}
+
+const loginFailure = new Map< string, LoginFailureType >();
+
+type IpLoginFailureType = {
+  count: number,
+  lastFailureAt: number
+}
+
+const ipLoginFailure = new Map< string, IpLoginFailureType >();
+
+const FAILURE_WINDOW_MS = 1000*60*15
+const MAX_LOGIN_DELAY_MS = 1000*8
+
+function recordAccountFailure( email: string ): number{
+  const now = Date.now();
+  const previous = loginFailure.get(email)
+
+  const count = !previous || ( now - previous.count ) > FAILURE_WINDOW_MS ? 
+                1 
+                : previous.count + 1
+  
+  loginFailure.set( email, {
+    count,
+    lastFailureAt: now
+  })
+
+  return count;
+
+}
+
+function recordIpFailure( ip: string ): number{
+
+  const key = ipKeyGenerator(ip)
+  const now = Date.now()
+  const previous = ipLoginFailure.get(key)
+
+  const count = !previous || now - previous.lastFailureAt > FAILURE_WINDOW_MS ?
+                1 :
+                previous.count + 1
+
+  ipLoginFailure.set( key, {
+    count,
+    lastFailureAt: now
+  })
+
+  if ( count < 3 ) {
+    return 0
+  }
+
+  return Math.min( 1000*2**(count - 3), MAX_LOGIN_DELAY_MS )
+
+}
+
+function resetAccountFailure( email: string ): void{
+  loginFailure.delete(email)
+}
+
+function resetIpLoginFailure( ip: string ): void{
+  ipLoginFailure.delete( ipKeyGenerator(ip) )
+}
+
+function wait( ms: number): Promise< void >{
+  return new Promise(( resolve ) => setTimeout( resolve, ms))
+}
+
 const app = express();
 
 const PORT = 3000;
@@ -212,7 +281,6 @@ app.post( "/api/auth/register", async ( req, res ) => {
 // User log in 
 app.post( "/api/auth/login", 
           loginIpLimiter,
-          loginAccountLimiter,
           async ( req, res ) => {
 
   try {
@@ -227,39 +295,50 @@ app.post( "/api/auth/login",
       !password.trim()
     ) {
       return res.status(400).json({
-        message: "Email or Password cannot be blank."
+        message: "Invalied email or password."
       })
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    const normalisedEmail = email.trim().toLowerCase();
     
     // Fetch Hash password
     const result = await pool.query(`
         SELECT password_hash, id
         FROM users
         WHERE email=$1;
-      `, [ cleanEmail ]);
+      `, [ normalisedEmail ]);
 
-    // Return if user not found
-    if ( result.rowCount === 0 ) {
-      return res.status(401).json({
-        message: "Invalied username or password"
+    let userId: number | undefined;
+    let authenticated = false
+      
+    if ( result.rowCount && result.rowCount > 0 ) {
+      authenticated = await argon2.verify(result.rows[0].password_hash, password)
+    }
+
+    if ( authenticated ) {
+      userId = result.rows[0].id
+    }
+
+    if ( !authenticated ) {
+      recordAccountFailure( normalisedEmail )
+
+      const delayMs = recordIpFailure( req.ip! )
+
+      if ( delayMs > 0 ){
+        await wait( delayMs )
+      }
+
+      return res.status(400).json({
+        message: "Invalied Email or Password"
       })
     }
 
-    const hashPassword = result.rows[0].password_hash
+    // Reset failiure counters
+    resetAccountFailure( normalisedEmail )
+    resetIpLoginFailure( req.ip! )
 
-    // Validate user
-    const doesMatch = await argon2.verify(hashPassword, password)
-    
-    if ( !doesMatch ) {
-      return res.status(401).json({
-        message: "Invalied username or password"
-      })
-    }
-
-    // Authentication token or something
-    req.session.userId = result.rows[0].id;
+    // Create session
+    req.session.userId = userId;
 
     req.session.save((err) => {
       if (err) {
