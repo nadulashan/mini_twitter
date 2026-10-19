@@ -91,7 +91,7 @@ export async function createPost(req: Request, res: Response) {
     console.error(e)
 
     res.status(500).json({
-      message: "Database error"
+      message: "Server could not create a new post"
     })
 
   }

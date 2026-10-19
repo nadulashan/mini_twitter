@@ -49,7 +49,7 @@ export async function register(req: Request, res: Response) {
 
     console.error(e)
     res.status(500).json({
-      message:'Database error'
+      message:'Database could not register.'
     })
 
   }
@@ -128,7 +128,7 @@ export async function login(req: Request, res: Response) {
 
     console.error(e)
     res.status(500).json({
-      message:"Server Error"
+      message:"Server could not login"
     })
 
   }
@@ -153,7 +153,7 @@ export async function getCurrentUser(req: Request, res: Response) {
 
   } catch (e) {
     console.error(e)
-    return res.status(500).json("Server error")
+    return res.status(500).json("Server could not get current user")
   }
 
 }
