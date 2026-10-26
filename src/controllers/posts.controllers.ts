@@ -33,9 +33,11 @@ export async function getPostById(req: Request, res: Response) {
   try {
     const postId = Number(req.params.id)
 
-    if ( !Number.isInteger(postId) || postId <= 0 ) {
+    if ( !Number.isInteger(postId) ||
+          postId <= 0 ||
+          postId > 2147483647 ) {
       return res.status(400).json({
-        message: "Invalied Post ID."
+        message: "Invalid Post ID."
       })
     }
 
@@ -50,7 +52,7 @@ export async function getPostById(req: Request, res: Response) {
         WHERE posts.id = $1;
       `, [ postId ])
 
-      if ( result.rowCount == 0 ) {
+      if ( result.rowCount === 0 ) {
         return res.status(404).json({
           message: "Post not found."
         })
@@ -60,7 +62,7 @@ export async function getPostById(req: Request, res: Response) {
   } catch ( e ) {
     console.error(e)
     return res.status(500).json({
-      message: "Cound not fetch post with the passed ID"
+      message: "Cound not fetch post."
     })
   }
 }
@@ -106,7 +108,7 @@ export async function deletePost(req: Request, res: Response) {
 
     if ( !Number.isInteger( postId ) || postId <=0 ) {
       return res.status(400).json({
-        message: "Invalied Post ID."
+        message: "Invalid Post ID."
       })
     }
 
@@ -117,7 +119,7 @@ export async function deletePost(req: Request, res: Response) {
         RETURNING id, content, created_at;
       `, [ postId, userId ])
 
-    if ( result.rowCount == 0 ) {
+    if ( result.rowCount === 0 ) {
       return res.status(404).json({
         message: "Post Not Found."
       })

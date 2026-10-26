@@ -28,6 +28,7 @@ This project is a learning project focused on building a backend application usi
 - **Session Managing:** express-session
 - **Session Storing:** connect-pg-simple
 - **Rate Limit:** express-rate-limit
+- **CORS:** cors
 
 ## Prerequisites
 
