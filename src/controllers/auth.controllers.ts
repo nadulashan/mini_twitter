@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import argon2 from "argon2";
 import pool from "../db.js";
 import { recordIpFailure, resetIpLoginFailure, wait } from "../security/loginProtection.js";
+import { randomBytes } from "node:crypto";
 
 const DUMMY_PASSWORD_HASH = "$argon2id$v=19$m=65536,p=4,t=3$Rlj6EmwwM/QFMrR/EANfDg$54LNiyeNrwhgEHsxxrZ+QSjBYYTnJb3pbWkr26gYvgg"
 
@@ -108,19 +109,29 @@ export async function login(req: Request, res: Response) {
     // Reset failiure counters
     resetIpLoginFailure( req.ip!, normalisedEmail )
 
-    // Create session
-    req.session.userId = userId;
-
-    req.session.save((err) => {
+    // Create a fresh session after successful authentication
+    req.session.regenerate((err) => {
       if (err) {
         console.error(err);
         return res.status(500).json({
-          message: "Failed to create session."
+          message: "Failed to create session.",
         });
       }
 
-      return res.status(200).json({
-        message: "Authentication successful."
+      req.session.userId = user.id;
+      req.session.csrfToken = randomBytes(32).toString("hex");
+
+      req.session.save((err) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({
+            message: "Failed to save session.",
+          });
+        }
+
+        return res.status(200).json({
+          message: "Authentication successful."
+        });
       });
     });
 
