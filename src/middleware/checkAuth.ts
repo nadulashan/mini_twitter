@@ -6,10 +6,12 @@ export default function checkAuth(
   next: NextFunction
 ) {
   if (!req.session.userId) {
+    console.log('This runs')
     return res.status(401).json({
       message: "User not logged in",
     });
   }
+  console.log("this shouldn't")
 
   next();
 }

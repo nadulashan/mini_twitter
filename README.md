@@ -14,7 +14,7 @@ This project is a learning project focused on building a backend application usi
 - [x] User login
 - [x] Authentication and authorization
 - [x] IP rate limit
-- [ ] Retrieve posts with author information
+- [x] Retrieve posts with author information
 - [ ] Update and delete posts
 
 ## Tech Stack
