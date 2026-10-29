@@ -80,11 +80,19 @@ export async function createPost(req: Request, res: Response) {
       })
     }
 
+    const trimmedContent = content.trim()
+
+    if ( trimmedContent.length > 280 ) {
+      return res.status(400).json({
+        message: "Content is too long."
+      })
+    }
+
     const result = await pool.query(`
         INSERT INTO posts ( content, user_id ) 
         VALUES ( $1, $2 )
         RETURNING content, user_id, created_at;
-      `, [ content, userId ])
+      `, [ trimmedContent, userId ])
     
       res.status(201).json(result.rows[0])
 
