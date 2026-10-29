@@ -3,7 +3,8 @@ CREATE TABLE users (
     username TEXT NOT NULL,
     email TEXT NOT NULL,
     password_hash TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_email UNIQUE (email)
 );
 
 CREATE TABLE posts (
@@ -15,5 +16,3 @@ CREATE TABLE posts (
         FOREIGN KEY (user_id)
         REFERENCES users (id)
 );
-
-ALTER TABLE users ADD CONSTRAINT unique_email UNIQUE (email);
