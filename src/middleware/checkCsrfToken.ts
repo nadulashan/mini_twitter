@@ -4,7 +4,7 @@ import { timingSafeEqual } from "node:crypto"
 export function checkCsrfToken( req: Request, res: Response, next: NextFunction ) {
 
     const sessionToken = req.session.csrfToken
-    const requestToken = req.get("X-CSRF-TOKEN")
+    const requestToken = req.get("X-CSRF-Token")
 
     if ( !sessionToken || !requestToken ) {
         return res.status(403).json({

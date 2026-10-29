@@ -10,7 +10,7 @@ import { checkCsrfToken } from "../middleware/checkCsrfToken.js";
 const authRoutes = Router();
 
 authRoutes.post( "/register", register)
-authRoutes.post( "/login", loginIpLimiter, checkCsrfToken, login)
+authRoutes.post( "/login", checkCsrfToken, loginIpLimiter, login)
 authRoutes.get("/me", checkAuth, getCurrentUser)
 authRoutes.get("/csrf", getCsrfToken)
 authRoutes.post("/logout", logout)
