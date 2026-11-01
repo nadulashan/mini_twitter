@@ -12,15 +12,19 @@ export async function register(req: Request, res: Response) {
 
     const { username, email, password } = req.body;
 
+    // Validate Email
+    const includeRequiredChar = email.toString().includes("@") && email.toString().includes(".")
+
     // Validate data
     if (
       typeof username !== "string" || 
-      typeof password !== "string" || 
+      typeof password !== "string" ||
       typeof email !== "string" ||
       !username.trim() ||
       !password.trim() ||
       !email.trim() ||
-      password.length < 8
+      password.length < 8 ||
+      !includeRequiredChar
     ) {
       return res.status(400).json({
         message: "Username, Password and Email cannot be blank. Password must at least contain 8 characters"
@@ -43,7 +47,7 @@ export async function register(req: Request, res: Response) {
   } catch (e: any) {
 
     if ( e.code === "23505" ){
-      res.status(409).json({
+      return res.status(409).json({
         message: "An account with this email already exist."
       })
     }
@@ -90,8 +94,6 @@ export async function login(req: Request, res: Response) {
     const isPasswordCorrect = await argon2.verify(hashToVerify, password)
 
     const authenticated = Boolean( isPasswordCorrect && user )
-
-    const userId: number | undefined = authenticated? result.rows[0].id : undefined
 
     if ( !authenticated ) {
 
