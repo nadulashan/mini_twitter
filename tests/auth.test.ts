@@ -34,8 +34,6 @@ describe( "Authentication Validation", () => {
       password: 'testPassword123'
     })
 
-    // const validDataPropertise = Object.keys(validData())
-
     describe( "Input Validation", () => {
       it.each( [ "username", "email", "password" ] as const ) (
         "should reject empty %s", async ( field ) => {
