@@ -40,50 +40,55 @@ describe( "Authentication Validation", () => {
     })
 
     describe( "Input Validation", () => {
-      it.each( [ "username", "email", "password" ] as const ) (
-        "should reject empty %s", async ( field ) => {
+      describe( "Empty inputs", () => {
+        it.each( [ "username", "email", "password" ] as const ) (
+          "should reject empty %s", async ( field ) => {
 
-          const response = await request(app)
-            .post(registerEndpoint)
-            .send({
-            ...validData(),
-            [ field ]: ""
-          })
-
-          expect(response.status).toBe(400)
-        }
-      )
-
-      it.each ( [ "username", "email", "password"] as const )(
-        "should reject white-space only %s", async ( field ) => {
-
-          const response = await request(app)
-            .post(registerEndpoint)
-            .send({
+            const response = await request(app)
+              .post(registerEndpoint)
+              .send({
               ...validData(),
-              [field]: "    "
-            })
-          
-          expect(response.status).toBe(400)
-        }
-      )
-
-      it.each([ "username", "email", "password" ] as const )(
-        "should reject non-string type for %s", async ( field ) => {
-
-          const response = await request(app)
-            .post(registerEndpoint)
-            .send({
-              ...validData(),
-              [ field ]: 123,
+              [ field ]: ""
             })
 
             expect(response.status).toBe(400)
-        }
-      )
+          }
+        )
+      })
+
+      describe( "White-space only inputs", () => {
+        it.each ( [ "username", "email", "password"] as const )(
+          "should reject white-space only %s", async ( field ) => {
+
+            const response = await request(app)
+              .post(registerEndpoint)
+              .send({
+                ...validData(),
+                [field]: "    "
+              })
+            
+            expect(response.status).toBe(400)
+          }
+        )
+      })
+
+      describe( "Non-string inputs", () => {
+        it.each([ "username", "email", "password" ] as const )(
+          "should reject non-string type for %s", async ( field ) => {
+
+            const response = await request(app)
+              .post(registerEndpoint)
+              .send({
+                ...validData(),
+                [ field ]: 123,
+              })
+
+              expect(response.status).toBe(400)
+          }
+        )
+      })
 
       it( "should reject short passwords", async () => {
-
         const response = await request(app)
           .post(registerEndpoint)
           .send({
@@ -94,20 +99,22 @@ describe( "Authentication Validation", () => {
         expect(response.status).toBe(400)
       })
 
-      it.each([ "invalidEmail#mail.com", "invalidEmail@mail,com" ])
-      ( "should reject invalid emails: %s", async ( invaldEmail ) => {
+      describe( "Invalid emails", () => {
+        it.each([ "invalidEmail#mail.com", "invalidEmail@mail,com" ])
+        ( "should reject invalid emails: %s", async ( invaldEmail ) => {
 
-        const response = await request(app)
-          .post( registerEndpoint )
-          .send({
-            ...validData(),
-            email: invaldEmail
-          })
+          const response = await request(app)
+            .post( registerEndpoint )
+            .send({
+              ...validData(),
+              email: invaldEmail
+            })
 
-        expect(response.status).toBe(400)
+          expect(response.status).toBe(400)
+        })
       })
 
-      describe( "should reject if either field is missing.", () => {
+      describe( "Missing Fields", () => {
         it.each([ "username", "email", "password" ] as const )("missing field: %s", async ( field ) => {
 
           const { [field]: omitted, ...data } = validData()
