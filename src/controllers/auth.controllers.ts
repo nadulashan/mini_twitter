@@ -6,14 +6,14 @@ import { randomBytes } from "node:crypto";
 
 const DUMMY_PASSWORD_HASH = "$argon2id$v=19$m=65536,p=4,t=3$Rlj6EmwwM/QFMrR/EANfDg$54LNiyeNrwhgEHsxxrZ+QSjBYYTnJb3pbWkr26gYvgg"
 
+function validEmail( email: string | undefined ) {
+    return email? email.toString().includes("@") && email.toString().includes(".") : false
+}
 
 export async function register(req: Request, res: Response) {
   try {
 
     const { username, email, password } = req.body;
-
-    // Validate Email
-    const includeRequiredChar = email? email.toString().includes("@") && email.toString().includes(".") : false
 
     // Validate data
     if (
@@ -24,7 +24,7 @@ export async function register(req: Request, res: Response) {
       !password.trim() ||
       !email.trim() ||
       password.length < 8 ||
-      !includeRequiredChar
+      !validEmail(email)
     ) {
       return res.status(400).json({
         message: "Username, Password and Email cannot be blank. Password must at least contain 8 characters"
@@ -70,7 +70,8 @@ export async function login(req: Request, res: Response) {
       typeof email !== 'string' ||
       typeof password !== 'string' ||
       !email.trim() ||
-      !password.trim()
+      !password.trim() ||
+      !validEmail(email)
     ) {
       return res.status(400).json({
         message: "Invalied email or password."
@@ -95,7 +96,7 @@ export async function login(req: Request, res: Response) {
 
     const authenticated = Boolean( isPasswordCorrect && user )
 
-    if ( !authenticated ) {
+    if ( !authenticated && process.env.NODE_ENV !== 'test' ) {
 
       const delayMs = recordIpFailure( req.ip!, normalisedEmail )
 

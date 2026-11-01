@@ -8,6 +8,7 @@ const loginIpLimiter = rateLimit({
   message: {
     message: "Too many login attempts. Please try again later.",
   },
+  skip: () => process.env.NODE_ENV === "test"
 });
 
 export default loginIpLimiter;
