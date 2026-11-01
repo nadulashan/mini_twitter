@@ -13,7 +13,7 @@ export async function register(req: Request, res: Response) {
     const { username, email, password } = req.body;
 
     // Validate Email
-    const includeRequiredChar = email.toString().includes("@") && email.toString().includes(".")
+    const includeRequiredChar = email? email.toString().includes("@") && email.toString().includes(".") : false
 
     // Validate data
     if (

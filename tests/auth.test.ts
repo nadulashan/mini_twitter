@@ -19,13 +19,13 @@ describe( "Authentication Validation", () => {
     let testEmail: string
 
     beforeEach( async () => {
-      testEmail = `test-${randomUUID()}@email.com  `
+      testEmail = `test-${randomUUID()}@email.com`
     })
 
     afterEach ( async () => {
       await pool.query(`
-          DELETE FROM users WHERE email = $1;
-        `, [ testEmail ])
+          DELETE FROM users;
+        `)
     })
 
     const validData = () => ({
@@ -33,6 +33,8 @@ describe( "Authentication Validation", () => {
       username: 'test user',
       password: 'testPassword123'
     })
+
+    // const validDataPropertise = Object.keys(validData())
 
     describe( "Input Validation", () => {
       it.each( [ "username", "email", "password" ] as const ) (
@@ -50,7 +52,7 @@ describe( "Authentication Validation", () => {
       )
 
       it.each ( [ "username", "email", "password"] as const )(
-        "should reject space %s", async ( field ) => {
+        "should reject white-space only %s", async ( field ) => {
 
           const response = await request(app)
             .post(registerEndpoint)
@@ -64,7 +66,7 @@ describe( "Authentication Validation", () => {
       )
 
       it.each([ "username", "email", "password" ] as const )(
-        "should reject invalid data type for %s", async ( field ) => {
+        "should reject non-string type for %s", async ( field ) => {
 
           const response = await request(app)
             .post(registerEndpoint)
@@ -89,7 +91,7 @@ describe( "Authentication Validation", () => {
         expect(response.status).toBe(400)
       })
 
-      it.each([ "invalidEmail#mail.com", "invaldEmail@mail,com" ])
+      it.each([ "invalidEmail#mail.com", "invalidEmail@mail,com" ])
       ( "should reject invalid emails: %s", async ( invaldEmail ) => {
 
         const response = await request(app)
@@ -102,37 +104,17 @@ describe( "Authentication Validation", () => {
         expect(response.status).toBe(400)
       })
 
-      // describe( "should reject if either field is missing.", () => {
-      //   it("missing email", async () => {
-      //     const response = await request(app)
-      //       .post( registerEndpoint )
-      //       .send({
-      //         username: "test user",
-      //         password: "testpassword123"
-      //       })
-      //     expect(response.status).toBe(400)
-      //   });
+      describe( "should reject if either field is missing.", () => {
+        it.each([ "username", "email", "password" ] as const )("missing field: %s", async ( field ) => {
 
-      //   it("missing password", async () => {
-      //     const response = await request(app)
-      //       .post( registerEndpoint )
-      //       .send({
-      //         username: "test user",
-      //         email: testEmail
-      //       })
-      //     expect(response.status).toBe(400)
-      //   });
-        
-      //   it("missing username", async () => {
-      //     const response = await request(app)
-      //       .post( registerEndpoint )
-      //       .send({
-      //         email: testEmail,
-      //         password: "testpassword123"
-      //       })
-      //     expect(response.status).toBe(400)
-      //   });
-      // })
+          const { [field]: omitted, ...data } = validData()
+
+          const response = await request(app)
+            .post( registerEndpoint )
+            .send(data)
+          expect(response.status).toBe(400)
+        });
+      })
 
     it( "should normalise email", async () => {
 
@@ -140,11 +122,12 @@ describe( "Authentication Validation", () => {
         .post(registerEndpoint)
         .send({
           ...validData(),
+          email: `  ${testEmail.toUpperCase()}  `
         })
       
         expect(response.status).toBe(201)
         expect(response.body).toMatchObject({
-          email: testEmail.trim(),
+          email: testEmail,
           username: "test user"
         })
         expect(response.body).toHaveProperty("id")
@@ -153,7 +136,7 @@ describe( "Authentication Validation", () => {
 
     })
 
-    it( "should reject creating duplicate accouts", async () => {
+    it( "should reject duplicate registration", async () => {
 
       const firstResponse = await request(app)
         .post(registerEndpoint)
@@ -171,6 +154,23 @@ describe( "Authentication Validation", () => {
 
       expect(secondResponse.status).toBe(409)
 
+    })
+
+    it( "should perform successful registration", async () => {
+      const response = await request(app)
+      .post( registerEndpoint )
+      .send({
+        ...validData()
+      })
+
+      expect(response.status).toBe(201)
+      expect(response.body).toMatchObject({
+        email: testEmail,
+        username: validData().username
+      })
+      expect(response.body).toHaveProperty("id")
+      expect(response.body).toHaveProperty("created_at")
+      expect(response.body).not.toHaveProperty("password_hash")
     })
 
   })
