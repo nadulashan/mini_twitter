@@ -96,14 +96,16 @@ export async function login(req: Request, res: Response) {
 
     const authenticated = Boolean( isPasswordCorrect && user )
 
-    if ( !authenticated && process.env.NODE_ENV !== 'test' ) {
+    if ( !authenticated ) {
 
-      const delayMs = recordIpFailure( req.ip!, normalisedEmail )
+      if ( process.env.NODE_ENV !== 'test' ){
+        const delayMs = recordIpFailure( req.ip!, normalisedEmail )
 
-      if ( delayMs > 0 ){
-        await wait( delayMs )
+        if ( delayMs > 0 ){
+          await wait( delayMs )
+        }
       }
-
+      
       return res.status(401).json({
         message: "Invalied Email or Password"
       })

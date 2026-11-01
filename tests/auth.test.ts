@@ -188,38 +188,45 @@ describe( "Authentication Validation", () => {
 
   })
 
-
   describe( "Login", () => {
+  let testEmail: string;
+  let csrfToken: string;
+  let agent: ReturnType<typeof request.agent>;
 
-    const validData ={
-      email: `test-${randomUUID()}@email.com`,      
-      password: 'testPassword123'
-    }
-    let csrfToken: string;
-    const agent = request.agent(app)
+  const validData = () => ({
+    email: testEmail,
+    password: "testPassword123",
+  });
 
-    beforeAll( async () => {
+  beforeEach(async () => {
+    testEmail = `test-${randomUUID()}@email.com`;
 
-      const createAccountResponse = await agent
-        .post( registerEndpoint )
-        .send({ ...validData, username: "test user" })
+    agent = request.agent(app);
 
-      expect(createAccountResponse.status).toBe(201)
+    // Register a fresh account.
+    const createAccountResponse = await agent
+      .post(registerEndpoint)
+      .send({
+        ...validData(),
+        username: "test user",
+      });
 
-      const getCsrfTokenResponse = await agent
-        .get( getCsrfTokenEndpoint )
-      
-      expect(getCsrfTokenResponse.status).toBe(200)
-      expect(getCsrfTokenResponse.body).toHaveProperty("csrfToken")
-      csrfToken = getCsrfTokenResponse.body.csrfToken
+    expect(createAccountResponse.status).toBe(201);
 
-    })
+    // Obtain a CSRF token for this agent's session.
+    const csrfResponse = await agent.get(getCsrfTokenEndpoint);
 
-    afterAll ( async () => {
-      await pool.query(`
-          DELETE FROM users;
-        `)
-    })
+    expect(csrfResponse.status).toBe(200);
+
+    csrfToken = csrfResponse.body.csrfToken;
+  });
+
+  afterEach(async () => {
+    await pool.query(
+      "DELETE FROM users WHERE email = $1",
+      [testEmail]
+    );
+  });
 
     describe( "Input Validation", () => {
 
@@ -231,7 +238,7 @@ describe( "Authentication Validation", () => {
               .post( loginEndpoint )
               .set( csrfTokenName, csrfToken)
               .send({
-                ...validData,
+                ...validData(),
                 [ field ]: ""
               })
 
@@ -248,7 +255,7 @@ describe( "Authentication Validation", () => {
               .post( loginEndpoint )
               .set( csrfTokenName, csrfToken)
               .send({
-                ...validData,
+                ...validData(),
                 [field]: "    "
               })
             
@@ -265,7 +272,7 @@ describe( "Authentication Validation", () => {
               .post( loginEndpoint )
               .set( csrfTokenName, csrfToken)
               .send({
-                ...validData,
+                ...validData(),
                 [ field ]: 123,
               })
 
@@ -282,7 +289,7 @@ describe( "Authentication Validation", () => {
             .post( loginEndpoint )
             .set( csrfTokenName, csrfToken)
             .send({
-              ...validData,
+              ...validData(),
               email: invaldEmail
             })
 
@@ -293,7 +300,7 @@ describe( "Authentication Validation", () => {
       describe( "Missing Fields", () => {
         it.each([ "email", "password" ] as const )("missing field: %s", async ( field ) => {
 
-          const { [field]: omitted, ...data } = validData
+          const { [field]: omitted, ...data } = validData()
 
           const response = await agent
             .post( loginEndpoint )
@@ -303,26 +310,52 @@ describe( "Authentication Validation", () => {
         });
       })
 
-      describe( "Login and Session regeneration", () => {
-        it( "should perform successful login", async () => {
+      describe( "Wrong Credentials", () => {
+        it( "should reject non-existing account", async () => {
+          const response = await agent
+            .post( loginEndpoint) 
+            .set( csrfTokenName, csrfToken )
+            .send({
+              ...validData(),
+              email: "somethingelse@mail.com"
+            })
+
+          expect(response.status).toBe(401)
+        })
+        
+        it( "should reject wrong password and not regenerate new Token", async () => {
           const response = await agent
             .post( loginEndpoint )
             .set( csrfTokenName, csrfToken )
-            .send( validData )
-            
-          expect(response.status).toBe(200)
-          expect(response.body).toMatchObject({
-            message: "Authentication successful."
-          })
+            .send({
+              ...validData(),
+              password: "wrongpassword"
+            })
+
+          expect(response.status).toBe(401)         
           
+          const csrfResponse = await agent
+            .get( getCsrfTokenEndpoint )
+          
+          expect(csrfResponse.body.csrfToken).toBe(csrfToken)
+        })
+      })
+
+      it( "should perform successful login", async () => {
+        const response = await agent
+          .post( loginEndpoint )
+          .set( csrfTokenName, csrfToken )
+          .send( validData() )
+          
+        expect(response.status).toBe(200)
+        expect(response.body).toMatchObject({
+          message: "Authentication successful."
         })
 
-        it( "should generate a new CSRF token", async () => {
-          const response = await agent
-            .get(getCsrfTokenEndpoint)
-
-          expect( response.body.csrfToken ).not.toBe(csrfToken)
-        })
+        const csrfResponse = await agent 
+          .get( getCsrfTokenEndpoint )
+        
+        expect(csrfResponse.body.csrfToken).not.toBe( csrfToken )
       })
 
   })
