@@ -76,7 +76,7 @@ export async function createPost(req: Request, res: Response) {
 
     if ( typeof content !== "string" || !content.trim() ){
       return res.status(400).json({
-        message: "Content is invalied."
+        message: "Content is invalid."
       })
     }
 
@@ -91,7 +91,7 @@ export async function createPost(req: Request, res: Response) {
     const result = await pool.query(`
         INSERT INTO posts ( content, user_id ) 
         VALUES ( $1, $2 )
-        RETURNING content, user_id, created_at;
+        RETURNING content, id, created_at;
       `, [ trimmedContent, userId ])
     
       res.status(201).json(result.rows[0])
