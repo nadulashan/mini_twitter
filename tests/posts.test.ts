@@ -198,7 +198,7 @@ describe( "Post Creation", () => {
         expect(response.status).toBe(403)
     })
   })
-  
+
   it( "should reject content with more than 280 characters", async () => {
     const shouldAcceptResponse = await agent
       .post( createPostEndpoint )
@@ -245,5 +245,21 @@ describe( "Post Creation", () => {
 
     expect(ownershipResponse.rows).toHaveLength(1)
     expect(ownershipResponse.rows[0].email).toBe(testEmail)
+  })
+
+  it( "should create multiple posts successfully", async () => {
+
+    for ( let i = 0; i === 3; i ++) {
+      const content = { content: `some valid post content ${randomUUID()}` }
+      const response = await agent
+        .post( createPostEndpoint )
+        .set( csrfTokenName, newCsrfToken )
+        .send( content )
+
+      expect(response.status).toBe(201)
+      expect(response.body).toMatchObject(content)
+      expect(response.body).toHaveProperty('created_at')
+      expect(response.body).toHaveProperty('id')
+    }
   })
 })
