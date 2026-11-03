@@ -13,6 +13,6 @@ authRoutes.post( "/register", register)
 authRoutes.post( "/login", checkCsrfToken, loginIpLimiter, login)
 authRoutes.get("/me", checkAuth, getCurrentUser)
 authRoutes.get("/csrf", getCsrfToken)
-authRoutes.post("/logout", logout)
+authRoutes.post("/logout", checkCsrfToken, logout)
 
 export default authRoutes;
