@@ -273,9 +273,7 @@ describe( "Post Deletion", () => {
   let emailsWithAccount: string[] = []
   let userIds: number[] = []
   let postIds: number[] = []
-
-  const activeAccount = emailsWithAccount[1]
-  const activePost = postIds[1]
+  let activePost: number;
 
   beforeEach(async () => {
 
@@ -342,6 +340,9 @@ describe( "Post Deletion", () => {
       }
     }
 
+    // Setup active post
+    activePost = postIds[1]
+
   });
 
   afterEach( async () => {
@@ -361,14 +362,33 @@ describe( "Post Deletion", () => {
     userIds = []
   })
 
-  it( "should reject non-number post id", async () => {
-    const idToBeSent = "string"
-    const response = await agent
-      .delete(`${deletePostEndpoint}${idToBeSent}`)
-      .set( csrfTokenName, csrfToken )
-      
-    expect(response.status).toBe(400)
+  describe( "Invalid Post ID", () => {
+    it( "should reject non-number post id", async () => {
+      const idToBeSent = "string"
+      const response = await agent
+        .delete(`${deletePostEndpoint}${idToBeSent}`)
+        .set( csrfTokenName, csrfToken )
+        
+      expect(response.status).toBe(400)
+    })
+
+    it( "should reject no post id", async () => {
+      const response = await agent
+        .delete(`${deletePostEndpoint}`)
+        .set( csrfTokenName, csrfToken )
+        
+      expect(response.status).toBe(404)
+    })
+
+    it( "should reject null post id", async () => {
+      const response = await agent
+        .delete(`${deletePostEndpoint}${null}`)
+        .set( csrfTokenName, csrfToken )
+        
+      expect(response.status).toBe(400)
+    })
   })
+
 
   it( "should reject deleting another user's post", async () => {
     const response = await agent
@@ -426,6 +446,24 @@ describe( "Post Deletion", () => {
 
       expect(response.status).toBe(401)
     })
+  })
+  
+  it( "should successfully delete active user's post an perform database verification", async () => {
+    const response = await agent
+      .delete(`${deletePostEndpoint}${activePost}`)
+      .set( csrfTokenName, csrfToken )
+
+    expect(response.status).toBe(200)
+    expect(response.body).toMatchObject({
+      message: "Post deleted successfully.",
+    })
+    expect(response.body).toHaveProperty("data")
+
+    const databaseResponse = await pool.query(
+      "SELECT * FROM posts WHERE id = $1;",
+      [ activePost ]
+    )
+    expect(databaseResponse.rowCount).toBe(0)
   })
 
 })

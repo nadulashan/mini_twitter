@@ -114,7 +114,7 @@ export async function deletePost(req: Request, res: Response) {
     const postId = Number( req.params.id );
     const userId = req.session.userId;
 
-    if ( !Number.isInteger( postId ) || postId <=0 ) {
+    if ( !Number.isInteger( postId ) || postId <=0 || !postId) {
       return res.status(400).json({
         message: "Invalid Post ID."
       })
