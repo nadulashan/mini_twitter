@@ -266,11 +266,9 @@ describe( "Post Creation", () => {
 })
 
 describe( "Post Deletion", () => {
-  let testEmail: string;
   let csrfToken: string;
   let agent: ReturnType<typeof request.agent>;
 
-  let emailsWithAccount: string[] = []
   let userIds: number[] = []
   let postIds: number[] = []
   let activePost: number;
@@ -279,10 +277,12 @@ describe( "Post Deletion", () => {
 
     agent = request.agent(app);
 
+    userIds = []
+    postIds = []
 
     // Create 2 accounts for tesiting purposes. 
     for ( let i = 0; i < 2; i++) {
-      testEmail = `test-${randomUUID()}@email.com`;
+      const testEmail = `test-${randomUUID()}@email.com`;
 
       // Account credentials
       const accountDetails = () => ({
@@ -300,7 +300,6 @@ describe( "Post Deletion", () => {
 
       expect(createAccountResponse.status).toBe(201);
       userIds.push( createAccountResponse.body.id )
-      emailsWithAccount.push( testEmail )
 
       // Obtain a CSRF token for this agent's session.
       const csrfResponse = await agent.get(getCsrfTokenEndpoint);
@@ -333,10 +332,12 @@ describe( "Post Deletion", () => {
 
       postIds.push(response.body.id)
 
-      if ( i === 0 ) {
+      if (i === 0) {
         const response = await agent
           .post("/api/auth/logout")
-        expect(response.status).toBe(200)
+          .set(csrfTokenName, csrfToken);
+
+        expect(response.status).toBe(200);
       }
     }
 
@@ -345,22 +346,22 @@ describe( "Post Deletion", () => {
 
   });
 
-  afterEach( async () => {
-    userIds.forEach( async id => {
+  afterEach(async () => {
+    for (const id of userIds) {
       await pool.query(
-          "DELETE FROM posts WHERE user_id = $1",
-          [ id ]
-        )
-      await pool.query(
-          "DELETE FROM users WHERE id = $1",
-          [ id ]
-        )
-    })
+        "DELETE FROM posts WHERE user_id = $1",
+        [id]
+      );
+    }
 
-    postIds = []
-    emailsWithAccount = []
-    userIds = []
-  })
+    await pool.query(
+      "DELETE FROM users WHERE id = ANY($1::int[])",
+      [userIds]
+    );
+
+    postIds = [];
+    userIds = [];
+  });
 
   describe( "Invalid Post ID", () => {
     it( "should reject non-number post id", async () => {
@@ -395,26 +396,23 @@ describe( "Post Deletion", () => {
       .delete(`${deletePostEndpoint}${postIds[0]}`)
       .set( csrfTokenName, csrfToken )
     expect(response.status).toBe(404)
+
+    const databaseResponse = await pool.query(
+      "SELECT id FROM posts WHERE id = $1",
+      [postIds[0]]
+    );
+
+    expect(databaseResponse.rowCount).toBe(1);
   })
 
   it( "should reject deleting non-existing post", async () => {
 
     // Generate a non-existing post ID
-    let nonExistingPostId: number | undefined = undefined
-    while (!nonExistingPostId){
-      const randomId = Math.floor(Math.random() * 1000)
-      let isUnique = false
-      postIds.forEach( id => {
-        if ( randomId !== id ){
-          isUnique = true
-        } else {
-          isUnique = false
-        }
-      })
-      if ( isUnique ) {
-        nonExistingPostId = randomId
-      }
-    }
+    const result = await pool.query(
+      "SELECT nextval(pg_get_serial_sequence('posts', 'id')) AS id"
+    );
+
+    const nonExistingPostId = result.rows[0].id;
 
     const response = await agent
       .delete(`${deletePostEndpoint}${nonExistingPostId}`)
@@ -448,7 +446,7 @@ describe( "Post Deletion", () => {
     })
   })
   
-  it( "should successfully delete active user's post an perform database verification", async () => {
+  it( "should successfully delete active user's post an perform database verification and should reject attempting to delete the same post", async () => {
     const response = await agent
       .delete(`${deletePostEndpoint}${activePost}`)
       .set( csrfTokenName, csrfToken )
@@ -464,6 +462,11 @@ describe( "Post Deletion", () => {
       [ activePost ]
     )
     expect(databaseResponse.rowCount).toBe(0)
+
+    const deleteSamePostResponse = await agent
+      .delete(`${deletePostEndpoint}${activePost}`)
+      .set( csrfTokenName, csrfToken ) 
+    expect(deleteSamePostResponse.status).toBe(404)
   })
 
 })
