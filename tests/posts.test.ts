@@ -15,6 +15,7 @@ const loginEndpoint = "/api/auth/login"
 const getCsrfTokenEndpoint = "/api/auth/csrf"
 const csrfTokenName = "X-CSRF-Token"
 const createPostEndpoint = "/api/posts/"
+const deletePostEndpoint = "/api/posts/"
 
 describe( "Post Creation", () => {
   let testEmail: string;
@@ -262,4 +263,169 @@ describe( "Post Creation", () => {
       expect(response.body).toHaveProperty('id')
     }
   })
+})
+
+describe( "Post Deletion", () => {
+  let testEmail: string;
+  let csrfToken: string;
+  let agent: ReturnType<typeof request.agent>;
+
+  let emailsWithAccount: string[] = []
+  let userIds: number[] = []
+  let postIds: number[] = []
+
+  const activeAccount = emailsWithAccount[1]
+  const activePost = postIds[1]
+
+  beforeEach(async () => {
+
+    agent = request.agent(app);
+
+
+    // Create 2 accounts for tesiting purposes. 
+    for ( let i = 0; i < 2; i++) {
+      testEmail = `test-${randomUUID()}@email.com`;
+
+      // Account credentials
+      const accountDetails = () => ({
+          email: testEmail,
+          password: "samePassword123"
+      })
+
+      // Register a fresh account.
+      const createAccountResponse = await agent
+        .post(registerEndpoint)
+        .send({
+          ...accountDetails(),
+          username: `test user ${i+1}`,
+        });
+
+      expect(createAccountResponse.status).toBe(201);
+      userIds.push( createAccountResponse.body.id )
+      emailsWithAccount.push( testEmail )
+
+      // Obtain a CSRF token for this agent's session.
+      const csrfResponse = await agent.get(getCsrfTokenEndpoint);
+
+      expect(csrfResponse.status).toBe(200);
+      csrfToken = csrfResponse.body.csrfToken;
+
+      // Log in 
+      const loginResponse = await agent
+        .post( loginEndpoint )
+        .set( csrfTokenName, csrfToken )
+        .send( accountDetails() )
+        
+      expect( loginResponse.status ).toBe(200)
+
+      // Update regenerated token
+      const csrfUpdatedResponse = await agent.get(getCsrfTokenEndpoint);
+
+      expect(csrfUpdatedResponse.status).toBe(200);
+      csrfToken = csrfUpdatedResponse.body.csrfToken;
+
+      // Create a post
+      const content = { content: `some valid post content ${randomUUID()} by user ${i+1}` }
+      const response = await agent
+        .post( createPostEndpoint )
+        .set( csrfTokenName, csrfToken )
+        .send( content )
+
+      expect(response.status).toBe(201)
+
+      postIds.push(response.body.id)
+
+      if ( i === 0 ) {
+        const response = await agent
+          .post("/api/auth/logout")
+        expect(response.status).toBe(200)
+      }
+    }
+
+  });
+
+  afterEach( async () => {
+    userIds.forEach( async id => {
+      await pool.query(
+          "DELETE FROM posts WHERE user_id = $1",
+          [ id ]
+        )
+      await pool.query(
+          "DELETE FROM users WHERE id = $1",
+          [ id ]
+        )
+    })
+
+    postIds = []
+    emailsWithAccount = []
+    userIds = []
+  })
+
+  it( "should reject non-number post id", async () => {
+    const idToBeSent = "string"
+    const response = await agent
+      .delete(`${deletePostEndpoint}${idToBeSent}`)
+      .set( csrfTokenName, csrfToken )
+      
+    expect(response.status).toBe(400)
+  })
+
+  it( "should reject deleting another user's post", async () => {
+    const response = await agent
+      .delete(`${deletePostEndpoint}${postIds[0]}`)
+      .set( csrfTokenName, csrfToken )
+    expect(response.status).toBe(404)
+  })
+
+  it( "should reject deleting non-existing post", async () => {
+
+    // Generate a non-existing post ID
+    let nonExistingPostId: number | undefined = undefined
+    while (!nonExistingPostId){
+      const randomId = Math.floor(Math.random() * 1000)
+      let isUnique = false
+      postIds.forEach( id => {
+        if ( randomId !== id ){
+          isUnique = true
+        } else {
+          isUnique = false
+        }
+      })
+      if ( isUnique ) {
+        nonExistingPostId = randomId
+      }
+    }
+
+    const response = await agent
+      .delete(`${deletePostEndpoint}${nonExistingPostId}`)
+      .set( csrfTokenName, csrfToken )
+
+    expect(response.status).toBe(404)
+  })
+
+  describe( "Missing Credentials", () => {
+    it( "should reject requests without CSRF token", async () => {
+      const response = await agent
+        .delete(`${deletePostEndpoint}${activePost}`)
+
+      expect(response.status).toBe(403)
+    })
+
+    it( "should reject requests with invalid CSRF token", async () => {
+      const response = await agent
+        .delete(`${deletePostEndpoint}${activePost}`)
+        .set( csrfTokenName, "someRandomToken")
+
+      expect(response.status).toBe(403)
+    })
+
+    it( "should reject requests without a session cookie", async () => {
+      const response = await request(app)
+        .delete(`${deletePostEndpoint}${activePost}`)
+        .set( csrfTokenName, csrfToken )
+
+      expect(response.status).toBe(401)
+    })
+  })
+
 })

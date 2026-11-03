@@ -222,8 +222,18 @@ describe( "Authentication Validation", () => {
   });
 
   afterEach(async () => {
+    // const postIds = await pool.query(
+    //   `SELECT posts.id 
+    //   FROM posts
+    //   JOIN users 
+    //   ON posts.user_id = users.id
+    //   WHERE email = $1`,
+    //   [testEmail]
+    // );
+    // console.log(postIds)
     await pool.query(
-      "DELETE FROM users WHERE email = $1",
+      `
+      DELETE FROM users WHERE email = $1`,
       [testEmail]
     );
   });
