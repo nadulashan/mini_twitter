@@ -9,27 +9,39 @@ import request from "supertest";
 import { randomUUID } from "node:crypto";
 import app from "../src/app.js";
 import pool from "../src/db.js";
-
-const registerEndpoint = "/api/auth/register"
-const loginEndpoint = "/api/auth/login"
-const getCsrfTokenEndpoint = "/api/auth/csrf"
-const csrfTokenName = "X-CSRF-Token"
-const createPostEndpoint = "/api/posts/"
-const deletePostEndpoint = "/api/posts/"
+import { createPostEndpoint, csrfTokenName, deletePostEndpoint, getCsrfTokenEndpoint, loginEndpoint, registerEndpoint } from "./variables.js";
 
 describe( "Post Creation", () => {
-  let testEmail: string;
   let oldCsrfToken: string;
   let newCsrfToken: string;
   let agent: ReturnType<typeof request.agent>;
+  let userId: number;
+
+
+  const testEmail = `test-${randomUUID()}@email.com`;
 
   const validUserData = () => ({
     email: testEmail,
     password: "testPassword123",
   });
 
+  async function checkDatabaseSideEffectsPostCreatFail(){
+    const databaseResponse = await pool.query(
+      "SELECT id FROM posts WHERE user_id = $1;",
+      [ userId ]
+    )
+    expect(databaseResponse.rowCount).toBe(0)
+  }
+
+  async function checkDatabaseSideEffectsPostCreatPass(){
+    const databaseResponse = await pool.query(
+      "SELECT id FROM posts WHERE user_id = $1;",
+      [ userId ]
+    )
+    expect(databaseResponse.rowCount).not.toBe(0)
+  }
+
   beforeEach(async () => {
-    testEmail = `test-${randomUUID()}@email.com`;
 
     agent = request.agent(app);
 
@@ -42,6 +54,7 @@ describe( "Post Creation", () => {
       });
 
     expect(createAccountResponse.status).toBe(201);
+    userId = createAccountResponse.body.id
 
     // Obtain a CSRF token for this agent's session.
     const csrfResponse = await agent.get(getCsrfTokenEndpoint);
@@ -97,6 +110,8 @@ describe( "Post Creation", () => {
         expect(response.body).toMatchObject({
           message: "Content is invalid."
         })
+
+        await await checkDatabaseSideEffectsPostCreatFail()
     })
 
     it( "should reject white-spaced field", async () => {  
@@ -109,6 +124,8 @@ describe( "Post Creation", () => {
         expect(response.body).toMatchObject({
           message: "Content is invalid."
         })
+
+        await checkDatabaseSideEffectsPostCreatFail()
     })
 
     it( "should reject non-string field", async () => {  
@@ -121,6 +138,8 @@ describe( "Post Creation", () => {
         expect(response.body).toMatchObject({
           message: "Content is invalid."
         })
+        await checkDatabaseSideEffectsPostCreatFail()
+
     })
 
     it( "should reject missing field", async () => {  
@@ -133,6 +152,8 @@ describe( "Post Creation", () => {
         expect(response.body).toMatchObject({
           message: "Content is invalid."
         })
+        await checkDatabaseSideEffectsPostCreatFail()
+
     })
 
     it( "should reject null field", async () => {  
@@ -145,6 +166,8 @@ describe( "Post Creation", () => {
         expect(response.body).toMatchObject({
           message: "Content is invalid."
         })
+        await checkDatabaseSideEffectsPostCreatFail()
+
     })
 
     it( "should reject content being an object", async () => {  
@@ -157,6 +180,8 @@ describe( "Post Creation", () => {
         expect(response.body).toMatchObject({
           message: "Content is invalid."
         })
+        await checkDatabaseSideEffectsPostCreatFail()
+
     })
 
     it( "should reject content being an array", async () => {  
@@ -169,6 +194,8 @@ describe( "Post Creation", () => {
         expect(response.body).toMatchObject({
           message: "Content is invalid."
         })
+        await checkDatabaseSideEffectsPostCreatFail()
+      
     })
   })
   describe( "Missing Credentials", () => {
@@ -180,6 +207,8 @@ describe( "Post Creation", () => {
         .send({ content: "some content" })
       
         expect(response.status).toBe(401)
+        await checkDatabaseSideEffectsPostCreatFail()
+
     })
 
     it( "should reject requests without CSRF token", async () => {  
@@ -188,6 +217,8 @@ describe( "Post Creation", () => {
         .send({ content: "content" })
       
         expect(response.status).toBe(403)
+        await checkDatabaseSideEffectsPostCreatFail()
+
     })
 
     it( "should reject requests invalid CSRF token", async () => {  
@@ -197,30 +228,39 @@ describe( "Post Creation", () => {
         .send({ content: "123" })
       
         expect(response.status).toBe(403)
+        await checkDatabaseSideEffectsPostCreatFail()
+
     })
   })
 
-  it( "should reject content with more than 280 characters", async () => {
-    const shouldAcceptResponse = await agent
-      .post( createPostEndpoint )
-      .set( csrfTokenName, newCsrfToken )
-      .send({
-        content: "a".repeat(280)
+  describe( "Long content", () => {
+    it( "should reject content with more than 280 characters", async () => {
+      const shouldRejectResponse = await agent
+        .post( createPostEndpoint )
+        .set( csrfTokenName, newCsrfToken )
+        .send({
+          content: "a".repeat(281)
+        })
+      
+      expect(shouldRejectResponse.status).toBe(400)
+      expect(shouldRejectResponse.body).toMatchObject({
+        message: "Content is too long."
       })
-    
-    expect(shouldAcceptResponse.status).toBe(201)
+      await checkDatabaseSideEffectsPostCreatFail()
 
-    const shouldRejectResponse = await agent
-      .post( createPostEndpoint )
-      .set( csrfTokenName, newCsrfToken )
-      .send({
-        content: "a".repeat(281)
-      })
-    
-    expect(shouldRejectResponse.status).toBe(400)
-    expect(shouldRejectResponse.body).toMatchObject({
-      message: "Content is too long."
     })
+
+    it( "should accept content with 280 characters", async () => {
+      const shouldAcceptResponse = await agent
+        .post( createPostEndpoint )
+        .set( csrfTokenName, newCsrfToken )
+        .send({
+          content: "a".repeat(280)
+        })
+      await checkDatabaseSideEffectsPostCreatPass()      
+      expect(shouldAcceptResponse.status).toBe(201)
+    })
+
   })
 
   it( "should create a successful post and should have correct ownership", async () => {
@@ -234,6 +274,7 @@ describe( "Post Creation", () => {
     expect(response.body).toMatchObject(content)
     expect(response.body).toHaveProperty('created_at')
     expect(response.body).toHaveProperty('id')
+    await checkDatabaseSideEffectsPostCreatPass()
 
     const ownershipResponse = await pool.query(
       `SELECT users.email
@@ -250,7 +291,7 @@ describe( "Post Creation", () => {
 
   it( "should create multiple posts successfully", async () => {
 
-    for ( let i = 0; i === 3; i ++) {
+    for ( let i = 0; i < 3; i ++) {
       const content = { content: `some valid post content ${randomUUID()}` }
       const response = await agent
         .post( createPostEndpoint )
@@ -262,6 +303,8 @@ describe( "Post Creation", () => {
       expect(response.body).toHaveProperty('created_at')
       expect(response.body).toHaveProperty('id')
     }
+    await checkDatabaseSideEffectsPostCreatPass()
+
   })
 })
 
@@ -272,6 +315,37 @@ describe( "Post Deletion", () => {
   let userIds: number[] = []
   let postIds: number[] = []
   let activePost: number;
+
+  async function checkDatabaseSideEffectsPostDelFail( postId: number ) {
+    const response = await pool.query(
+      "SELECT id FROM posts WHERE id = $1;",
+      [ postId ]
+    )
+    expect(response.rowCount).not.toBe(0)
+  }
+
+  async function checkDatabaseSideEffectsPostDelPass( postId: number ) {
+    const response = await pool.query(
+      "SELECT id FROM posts WHERE id = $1;",
+      [ postId ]
+    )
+    expect(response.rowCount).toBe(0)
+  }
+
+  async function checkDatabaseSideEffectsAllPostsExists() {
+    const response = await pool.query(
+      `
+      SELECT
+        cardinality($1::int[]) > 0
+        AND COUNT(*) = cardinality($1::int[]) AS all_posts_exist
+      FROM posts
+      WHERE id = ANY($1::int[]);
+      `,
+      [ postIds ]
+    )
+    // console.log(response)
+    expect(response.rows[0].all_posts_exist).toBe(true)
+  }
 
   beforeEach(async () => {
 
@@ -371,6 +445,7 @@ describe( "Post Deletion", () => {
         .set( csrfTokenName, csrfToken )
         
       expect(response.status).toBe(400)
+      await checkDatabaseSideEffectsAllPostsExists()
     })
 
     it( "should reject no post id", async () => {
@@ -379,6 +454,7 @@ describe( "Post Deletion", () => {
         .set( csrfTokenName, csrfToken )
         
       expect(response.status).toBe(404)
+      await checkDatabaseSideEffectsAllPostsExists()
     })
 
     it( "should reject null post id", async () => {
@@ -387,13 +463,15 @@ describe( "Post Deletion", () => {
         .set( csrfTokenName, csrfToken )
         
       expect(response.status).toBe(400)
+      await checkDatabaseSideEffectsAllPostsExists()
     })
   })
 
 
   it( "should reject deleting another user's post", async () => {
+    const targetedPost = postIds[0]
     const response = await agent
-      .delete(`${deletePostEndpoint}${postIds[0]}`)
+      .delete(`${deletePostEndpoint}${targetedPost}`)
       .set( csrfTokenName, csrfToken )
     expect(response.status).toBe(404)
 
@@ -403,6 +481,7 @@ describe( "Post Deletion", () => {
     );
 
     expect(databaseResponse.rowCount).toBe(1);
+    await checkDatabaseSideEffectsPostDelFail(targetedPost)
   })
 
   it( "should reject deleting non-existing post", async () => {
@@ -419,6 +498,7 @@ describe( "Post Deletion", () => {
       .set( csrfTokenName, csrfToken )
 
     expect(response.status).toBe(404)
+    await checkDatabaseSideEffectsAllPostsExists()
   })
 
   describe( "Missing Credentials", () => {
@@ -427,6 +507,7 @@ describe( "Post Deletion", () => {
         .delete(`${deletePostEndpoint}${activePost}`)
 
       expect(response.status).toBe(403)
+      await checkDatabaseSideEffectsPostDelFail(activePost)
     })
 
     it( "should reject requests with invalid CSRF token", async () => {
@@ -435,6 +516,7 @@ describe( "Post Deletion", () => {
         .set( csrfTokenName, "someRandomToken")
 
       expect(response.status).toBe(403)
+      await checkDatabaseSideEffectsPostDelFail(activePost)
     })
 
     it( "should reject requests without a session cookie", async () => {
@@ -443,6 +525,7 @@ describe( "Post Deletion", () => {
         .set( csrfTokenName, csrfToken )
 
       expect(response.status).toBe(401)
+      await checkDatabaseSideEffectsPostDelFail(activePost)
     })
   })
   
@@ -457,11 +540,7 @@ describe( "Post Deletion", () => {
     })
     expect(response.body).toHaveProperty("data")
 
-    const databaseResponse = await pool.query(
-      "SELECT * FROM posts WHERE id = $1;",
-      [ activePost ]
-    )
-    expect(databaseResponse.rowCount).toBe(0)
+    await checkDatabaseSideEffectsPostDelPass(activePost)
 
     const deleteSamePostResponse = await agent
       .delete(`${deletePostEndpoint}${activePost}`)
