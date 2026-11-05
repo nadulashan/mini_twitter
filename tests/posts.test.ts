@@ -343,7 +343,6 @@ describe( "Post Deletion", () => {
       `,
       [ postIds ]
     )
-    // console.log(response)
     expect(response.rows[0].all_posts_exist).toBe(true)
   }
 
