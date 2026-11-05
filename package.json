@@ -4,11 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest",
     "test:run": "vitest run",
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "migrate:create": "node-pg-migrate create --config-file .migration.json",
+    "migrate:up": "node-pg-migrate up --config-file .migration.json",
+    "migrate:down": "node-pg-migrate down --config-file .migration.json"
   },
   "keywords": [],
   "author": "Nadula Shan",
@@ -31,10 +34,16 @@
     "@types/node": "^26.6.4",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
+    "node-pg-migrate": "^9.0.0",
     "supertest": "^7.3.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"
   },
-  "type": "module"
+  "type": "module",
+  "allowScripts": {
+    "argon2@0.45.1": true,
+    "esbuild@0.28.2": true,
+    "fsevents@2.3.3": true
+  }
 }
