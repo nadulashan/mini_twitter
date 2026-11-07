@@ -160,7 +160,7 @@ export async function getCurrentUser(req: Request, res: Response) {
       `, [ req.session.userId ])
 
     if ( !result.rows[0] ){
-      return res.status(400).json({
+      return res.status(404).json({
         message: "Cannot find user account. It may have been deleted."
       })
     }
