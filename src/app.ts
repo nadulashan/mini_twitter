@@ -6,6 +6,7 @@ import authRoutes from "./routes/auth.routes.js";
 import postsRoutes from "./routes/posts.routes.js";
 import usersRoute from "./routes/users.routes.js";
 import cors from "cors";
+import constraintsRoutes from "./routes/dev/constraints.routes.js";
 
 
 const app = express();
@@ -40,5 +41,9 @@ app.use(
 app.use("/api/auth", authRoutes);
 app.use("/api/posts", postsRoutes);
 app.use("/api/users", usersRoute);
+
+if ( process.env.NODE_ENV !== "production" && process.env.ENABLE_DEV_ROUTES === "true" ){
+  app.use("/api/dev", constraintsRoutes)
+}
 
 export default app;
