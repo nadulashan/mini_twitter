@@ -3,17 +3,17 @@ import request from 'supertest'
 import app from '../../src/app'
 import { registerEndpoint } from '../variables'
 import pool from '../../src/db'
+import { randomUUID } from 'node:crypto'
 
 describe( "Database Constraints", () => {
     let userId: number;
-    let postId: number | undefined = undefined
 
     beforeEach( async () => {
         const response = await request(app)
             .post(registerEndpoint)
             .send({
                 username: "test user",
-                email: "randomEamil@gmail.com",
+                email: `${randomUUID()}@gmail.com`,
                 password: 'StronPassword123'
             })
         expect(response.status).toBe(201)
@@ -21,14 +21,7 @@ describe( "Database Constraints", () => {
     })
 
     afterEach( async () => {
-        if ( postId ) {
-            pool.query(
-                "DELETE FROM posts WHERE id = $1",
-                [ postId ]
-            )
-        }
-
-        pool.query(
+        await pool.query(
             "DELETE FROM users WHERE id = $1;",
             [ userId ]
         )
