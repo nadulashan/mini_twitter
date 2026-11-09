@@ -4,6 +4,7 @@ import pool from "../db.js";
 import { recordIpFailure, resetIpLoginFailure, wait } from "../security/loginProtection.js";
 import { randomBytes } from "node:crypto";
 import handleDatabaseError from "../utils/handleDatabaseError.js";
+import { env } from "../config/env.js";
 
 const DUMMY_PASSWORD_HASH = "$argon2id$v=19$m=65536,p=4,t=3$Rlj6EmwwM/QFMrR/EANfDg$54LNiyeNrwhgEHsxxrZ+QSjBYYTnJb3pbWkr26gYvgg"
 
@@ -90,7 +91,7 @@ export async function login(req: Request, res: Response) {
 
     if ( !authenticated ) {
 
-      if ( process.env.NODE_ENV !== 'test' ){
+      if ( env.NODE_ENV !== 'test' ){
         const delayMs = recordIpFailure( req.ip!, normalisedEmail )
 
         if ( delayMs > 0 ){
@@ -167,7 +168,7 @@ export async function logout(req: Request, res: Response) {
 
     res.clearCookie("connect.sid", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: env.NODE_ENV === "production",
       sameSite: "lax"
     })
 

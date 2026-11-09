@@ -9,8 +9,9 @@ import cors from "cors";
 import constraintsRoutes from "./routes/dev/constraints.routes.js";
 import errorHandler from "./middleware/errorHandler.js";
 import notFound from "./middleware/notFound.js";
+import { env } from "./config/env.js";
 
-
+process
 const app = express();
 
 app.use(cors({
@@ -21,19 +22,18 @@ app.use(cors({
 app.use(express.json());
 
 const PgSession = connectPgSimple(session);
-
 app.use(
   session({
     store: new PgSession({
       pool,
       createTableIfMissing: true,
     }),
-    secret: process.env.SECRET_KEY!,
+    secret: env.SECRET_KEY,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     },
@@ -44,7 +44,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/posts", postsRoutes);
 app.use("/api/users", usersRoute);
 
-if ( process.env.NODE_ENV !== "production" && process.env.ENABLE_DEV_ROUTES === "true" ){
+if ( env.NODE_ENV !== "production" && env.ENABLE_DEV_ROUTES ){
   app.use("/api/dev", constraintsRoutes)
   app.get("/test", async (req, res) => {
       throw new Error("Something went wrong");
