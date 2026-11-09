@@ -7,6 +7,7 @@ import postsRoutes from "./routes/posts.routes.js";
 import usersRoute from "./routes/users.routes.js";
 import cors from "cors";
 import constraintsRoutes from "./routes/dev/constraints.routes.js";
+import errorHandler from "./middleware/errorHandler.js";
 
 
 const app = express();
@@ -44,6 +45,10 @@ app.use("/api/users", usersRoute);
 
 if ( process.env.NODE_ENV !== "production" && process.env.ENABLE_DEV_ROUTES === "true" ){
   app.use("/api/dev", constraintsRoutes)
+  app.get("/test", async (req, res) => {
+      throw new Error("Something went wrong");
+  });
 }
+app.use(errorHandler);
 
 export default app;
