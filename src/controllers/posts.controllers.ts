@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import pool from "../db.js";
+import handleDatabaseError from "../utils/handleDatabaseError.js";
 
 export async function getAllPosts(
   req: Request,
@@ -21,10 +22,7 @@ export async function getAllPosts(
 
   } catch (e) {
 
-    console.error(e)
-    return res.status(500).json({
-      message: "Server could not fetch posts"
-    })
+    handleDatabaseError( e, res, "fetching all posts")
 
   }
 }
@@ -60,10 +58,7 @@ export async function getPostById(req: Request, res: Response) {
 
       return res.status(200).json(result.rows[0])
   } catch ( e ) {
-    console.error(e)
-    return res.status(500).json({
-      message: "Cound not fetch post."
-    })
+    handleDatabaseError( e, res, "fetching post by ID")
   }
 }
 
@@ -97,13 +92,7 @@ export async function createPost(req: Request, res: Response) {
       res.status(201).json(result.rows[0])
 
   } catch ( e ) {
-
-    console.error(e)
-
-    res.status(500).json({
-      message: "Server could not create a new post"
-    })
-
+    handleDatabaseError( e, res, "creating a post")
   }
 
 }
@@ -139,9 +128,6 @@ export async function deletePost(req: Request, res: Response) {
     })
 
   } catch (e) {
-    console.error(e)
-    return res.status(500).json({
-      message: "Could not delete the post."
-    })
+    handleDatabaseError(e, res, "deleting posts")
   }
 }

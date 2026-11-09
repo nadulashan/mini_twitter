@@ -1,5 +1,6 @@
 import pool from "../db.js"
 import type { Request, Response } from 'express'
+import handleDatabaseError from "../utils/handleDatabaseError.js"
 
 export async function getAllUsers( req:Request, res: Response){
     try{
@@ -8,10 +9,7 @@ export async function getAllUsers( req:Request, res: Response){
         )
         res.status(200).json(result.rows)
     } catch ( e ) {
-        console.error(e)
-        res.status(500).json({
-            message: "Server could not fetch users."
-        })
+        handleDatabaseError( e, res, "fetching all users.")
     }
 
 }

@@ -3,6 +3,7 @@ import argon2 from "argon2";
 import pool from "../db.js";
 import { recordIpFailure, resetIpLoginFailure, wait } from "../security/loginProtection.js";
 import { randomBytes } from "node:crypto";
+import handleDatabaseError from "../utils/handleDatabaseError.js";
 
 const DUMMY_PASSWORD_HASH = "$argon2id$v=19$m=65536,p=4,t=3$Rlj6EmwwM/QFMrR/EANfDg$54LNiyeNrwhgEHsxxrZ+QSjBYYTnJb3pbWkr26gYvgg"
 
@@ -46,16 +47,7 @@ export async function register(req: Request, res: Response) {
 
   } catch (e: any) {
 
-    if ( e.code === "23505" ){
-      return res.status(409).json({
-        message: "An account with this email already exist."
-      })
-    }
-
-    console.error(e)
-    res.status(500).json({
-      message:'Database could not register.'
-    })
+    handleDatabaseError( e, res, "registering")
 
   }
 
@@ -142,10 +134,7 @@ export async function login(req: Request, res: Response) {
 
   } catch (e) {
 
-    console.error(e)
-    res.status(500).json({
-      message:"Server could not login"
-    })
+    handleDatabaseError( e, res, "logging in")
 
   }
 }
@@ -168,8 +157,7 @@ export async function getCurrentUser(req: Request, res: Response) {
     return res.status(200).json(result.rows[0])
 
   } catch (e) {
-    console.error(e)
-    return res.status(500).json("Server could not get current user")
+    handleDatabaseError( e, res, "Fetching current user")
   }
 
 }
@@ -179,9 +167,7 @@ export async function logout(req: Request, res: Response) {
     if ( err ) {
       console.error(err)
 
-      return res.status(500).json({
-        message: "Failed to Log out"
-      })
+      handleDatabaseError( err, res, "logging out")
     }
 
     res.clearCookie("connect.sid", {

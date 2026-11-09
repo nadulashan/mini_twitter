@@ -14,7 +14,7 @@ constraintsRoutes.post("/constraints", async ( req: Request, res: Response) => {
 
     return res.json({ message: "Inserted successfully" });
   } catch (error) {
-    console.error(error);
+    console.log(error);
     return res.status(500).json({ error: "Database error" });
   }
 })
