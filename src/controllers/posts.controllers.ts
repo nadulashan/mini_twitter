@@ -22,7 +22,7 @@ export async function getAllPosts(
 
   } catch (e) {
 
-    handleDatabaseError( e, res, "fetching all posts")
+    handleDatabaseError( e, res, "failed fetching all posts")
 
   }
 }
@@ -58,7 +58,7 @@ export async function getPostById(req: Request, res: Response) {
 
       return res.status(200).json(result.rows[0])
   } catch ( e ) {
-    handleDatabaseError( e, res, "fetching post by ID")
+    handleDatabaseError( e, res, "failed fetching post by ID")
   }
 }
 
@@ -92,7 +92,7 @@ export async function createPost(req: Request, res: Response) {
       res.status(201).json(result.rows[0])
 
   } catch ( e ) {
-    handleDatabaseError( e, res, "creating a post")
+    handleDatabaseError( e, res, "failed creating a post")
   }
 
 }
@@ -128,6 +128,6 @@ export async function deletePost(req: Request, res: Response) {
     })
 
   } catch (e) {
-    handleDatabaseError(e, res, "deleting posts")
+    handleDatabaseError(e, res, "failed deleting posts")
   }
 }

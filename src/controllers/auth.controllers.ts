@@ -47,7 +47,7 @@ export async function register(req: Request, res: Response) {
 
   } catch (e: any) {
 
-    handleDatabaseError( e, res, "registering")
+    handleDatabaseError( e, res, "failed registering")
 
   }
 
@@ -109,10 +109,7 @@ export async function login(req: Request, res: Response) {
     // Create a fresh session after successful authentication
     req.session.regenerate((err) => {
       if (err) {
-        console.error(err);
-        return res.status(500).json({
-          message: "Failed to create session.",
-        });
+        handleDatabaseError( err, res, "failed session regeneration")
       }
 
       req.session.userId = user.id;
@@ -134,7 +131,7 @@ export async function login(req: Request, res: Response) {
 
   } catch (e) {
 
-    handleDatabaseError( e, res, "logging in")
+    handleDatabaseError( e, res, "failed logging in")
 
   }
 }
@@ -157,7 +154,7 @@ export async function getCurrentUser(req: Request, res: Response) {
     return res.status(200).json(result.rows[0])
 
   } catch (e) {
-    handleDatabaseError( e, res, "Fetching current user")
+    handleDatabaseError( e, res, "Failed fetching current user")
   }
 
 }
@@ -165,9 +162,7 @@ export async function getCurrentUser(req: Request, res: Response) {
 export async function logout(req: Request, res: Response) {
    req.session.destroy( err => {
     if ( err ) {
-      console.error(err)
-
-      handleDatabaseError( err, res, "logging out")
+      handleDatabaseError( err, res, "failed logging out")
     }
 
     res.clearCookie("connect.sid", {
