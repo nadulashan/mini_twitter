@@ -8,6 +8,7 @@ import usersRoute from "./routes/users.routes.js";
 import cors from "cors";
 import constraintsRoutes from "./routes/dev/constraints.routes.js";
 import errorHandler from "./middleware/errorHandler.js";
+import notFound from "./middleware/notFound.js";
 
 
 const app = express();
@@ -49,6 +50,8 @@ if ( process.env.NODE_ENV !== "production" && process.env.ENABLE_DEV_ROUTES === 
       throw new Error("Something went wrong");
   });
 }
+
+app.use(notFound)
 app.use(errorHandler);
 
 export default app;
