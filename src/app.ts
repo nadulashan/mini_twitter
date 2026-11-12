@@ -10,6 +10,7 @@ import constraintsRoutes from "./routes/dev/constraints.routes.js";
 import errorHandler from "./middleware/errorHandler.js";
 import notFound from "./middleware/notFound.js";
 import { env } from "./config/env.js";
+import healthRoutes from "./routes/health.routes.js";
 
 process
 const app = express();
@@ -43,6 +44,7 @@ app.use(
 app.use("/api/auth", authRoutes);
 app.use("/api/posts", postsRoutes);
 app.use("/api/users", usersRoute);
+app.use("/health", healthRoutes)
 
 if ( env.NODE_ENV !== "production" && env.ENABLE_DEV_ROUTES ){
   app.use("/api/dev", constraintsRoutes)
